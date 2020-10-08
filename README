@@ -1,0 +1,84 @@
+This is a short description on how to prepare anything in order to run
+a test example with the model.
+
+
+Requirements:
+################################################
+
+1.) Be sure the following programs and libraries are installed properly on your Unix system:
+
+    OPEN MPI version 4.0.2 or newer
+    HDF5 C library, preferable latest release
+    netCDF-4 C library, preferable latest release
+    Python version 2.7
+
+2.) In addition, Python 2.7 requires the following modules:
+
+    NumPy
+    SciPy
+    netCDF4
+    Matplotlib (to create plots of the model setup)
+    MPI for Python
+    Shapely
+
+    Please make sure additionally installed modules are located in the global default directory (i.e. site-packages directory).
+    Otherwise, the environmental variable PYTHONPATH needs to be set to:
+
+    export PYTHONPATH=$your_python_modules_location
+    
+
+Model Setup:
+################################################
+
+Each model setup needs input files in netcdf format, consisting of a grid file, boundary files and optionally an emission file.
+Each model setup has a simulation name, e.g. "play_ground", which is the prefix of the grid file, boundary files and emission file.
+For example, a list of input files can be:
+
+    play_ground_grid.nc    
+    play_ground_bnd_*nc
+    play_ground_emiss.nc
+
+These files have to be placed in the input directory (relative path "./INPUT")
+
+To generate the input files, please enter the preprocessing folder (relative path "./PREPROC")
+
+Executing the script "grid_gen.py" will generate a grid file. It is possible to change the grid-dimension size, grid spacing, and
+also the location of buildings within the domain. New buildings can be easily created by translating/rotating/deforming already defined 
+base geometries. Please do not forget to append a new geometry to the geom list. The list can be also empty.
+
+After creation of the grid file, boundary files can be created with the script "bound_gen.py". The user can specify the simulation time,
+and at which time stamps boundary files are created to feed into the model. The model uses linear time interpolation between two
+boundary files. 
+
+Lastly, with the script "emiss_gen.py", an emission file can be created, where the names and corresponding sources of passive
+tracer fields are specified. If non-trivial boundary conditions (non-homogeneous Dirichlet) are used for the passive tracer fields,
+the corresponding fields need to be also contained in the boundary files. Per default, homogeneous-zero Dirichlet conditions are used, 
+which does not require boundary fields.
+
+Please make sure that all generated files have the same prefix "simulation_name", and do not forget to move the files to the input folder.
+
+Before each model run, the namelist file "namelist.py", located in the main directory, needs to be edited. 
+Please make sure the following namelist parameters are set properly for a smooth model run:
+
+   "simulation_name":    has to match the prefix of the input files. 
+   "npc", "npr":         product of number of processes in each dimension has to be available on your system.
+   "st_time":            has to be the same as in bound_gen.py.
+   "sim_time":           has to be less or equal as in bound_gen.py.
+   "with_emissfile":     has to be True, if an emission file is provided; otherwise only fluid dynamics is computed.
+   "bnd_chem*":          has to be None, if trivial boundary conditions are used for the tracer fields.
+   
+
+Model run:
+################################################
+
+In order  to run the model, please execute the following commands:
+
+    np=npc*npr  #insert correct numbers from the namelist file
+    mpirun -np $np python pumadyn.py
+
+
+The model will start writing output files in the output folder "./OUTPUT". Files are in netcdf format with prefix "simulation_name".
+The file with the suffix "99999" is the potential-flow solution to the geometry and initial condition ("diagnostic wind").
+If the model becomes unstable and aborts, it creates a last file with suffix "88888".
+
+

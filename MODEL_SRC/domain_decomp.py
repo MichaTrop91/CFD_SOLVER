@@ -3,8 +3,6 @@
 # Permoserstrasse 15
 # 04318 Leipzig                   
 # Germany
-#Last modified: 10.10.2020
-
 
 # load external python packages
 import numpy as np
@@ -275,7 +273,7 @@ def partition_domain(nr, nc, npr, npc):
     given the domain size and the number 
     of proccessors.
     
-    nr, nc... number of rows/columns (y, x)
+    nr, nc... number of rows, columns (y, x)
     npr, npc... number of processors in each row/column 
     """
  
@@ -285,31 +283,98 @@ def partition_domain(nr, nc, npr, npc):
     nri_h = nri_l + 1
     ncj_l = int(ncj_av)
     ncj_h = ncj_l + 1
-    nl = npr * (nri_h) - nr
-    nh = npr - nl 
+
     nri = [0]
-
-    n_min = min(nh, nl)
-    for n in range(n_min):
-        nri.append(nri[-1] + nri_h)
-        nri.append(nri[-1] + nri_l)
-
-    for n in range(max(0, nh - n_min)):
-        nri.append(nri[-1] + nri_h)
-    for n in range(max(0, nl - n_min)):
-        nri.append(nri[-1] + nri_l)
-
-    nl = npc * (ncj_h) - nc
-    nh = npc - nl
     ncj = [0]
-    n_min = min(nh, nl)
-    for n in range(n_min):
-        ncj.append(ncj[-1] + ncj_h)
+
+    eps = 1e-10
+
+    nl = npr * nri_h - nr
+    nh = npr - nl
+
+    if nh == 0:
+        for n in range(nl):
+            nri.append(nri[-1] + nri_l)
+    elif nl == 1:
+        nri.append(nri[-1] + nri_l)
+        for n in range(nh):
+            nri.append(nri[-1] + nri_h)
+    elif nh == 1:
+        nri.append(nri[-1] + nri_l)
+        for n in range(nl/2):
+            ncj.append(nri[-1] + nri_l)
+        nri.append(nri[-1] + nri_h)
+        for n in range(nl/2, nl):
+            nri.append(nri[-1] + nri_l)
+    else:
+        fac_nl_nh = float(nl) / float(nh)
+        if fac_nl_nh > 1.0:
+            num = 0.0
+            for n in range(nl):
+                num += 1.0
+                if num + eps >= fac_nl_nh:
+                    nri.append(nri[-1] + nri_h)
+                    nri.append(nri[-1] + nri_l)
+                    num -= fac_nl_nh
+                else:
+                    nri.append(nri[-1] + nri_l) 
+
+        else:
+            nri.append(nri[-1] + nri_l)
+            fac_nh_nl = float(nh) / float(nl - 1)
+            num = 0.0
+            for n in range(nh):
+                num += 1.0
+                if num + eps >= fac_nh_nl:
+                    nri.append(nri[-1] + nri_h)
+                    nri.append(nri[-1] + nri_l)
+                    num -= fac_nl_nh
+                else: 
+                    nri.append(nri[-1] + nri_h)
+
+
+    nl = npc * ncj_h - nc
+    nh = npc - nl
+
+    if nh == 0:
+        for n in range(nl):
+            nri.append(ncj[-1] + ncj_l)
+    elif nl == 1:
         ncj.append(ncj[-1] + ncj_l)
-    for n in range(max(0, nh - n_min)):
+        for n in range(nh):
+            ncj.append(ncj[-1] + ncj_h)
+    elif nh == 1:
+        ncj.append(ncj[-1] + ncj_l)
+        for n in range(nl/2):
+            ncj.append(ncj[-1] + ncj_l)
         ncj.append(ncj[-1] + ncj_h)
-    for n in range(max(0, nl - n_min)):
-        ncj.append(ncj[-1] + ncj_l)           
+        for n in range(nl/2, nl):
+            ncj.append(ncj[-1] + ncj_l)
+    else:
+        fac_nl_nh = float(nl) / float(nh)
+        if fac_nl_nh > 1.0:
+            num = 0.0
+            for n in range(nl):
+                num += 1.0
+                if num + eps >= fac_nl_nh:
+                    ncj.append(ncj[-1] + ncj_h)
+                    ncj.append(ncj[-1] + ncj_l)
+                    num -= fac_nl_nh
+                else:
+                    ncj.append(ncj[-1] + ncj_l)
+
+        else:
+            ncj.append(ncj[-1] + ncj_l)
+            fac_nh_nl = float(nh) / float(nl - 1)
+            num = 0.0
+            for n in range(nh):
+                num += 1.0
+                if num + eps >= fac_nh_nl:
+                    ncj.append(ncj[-1] + ncj_h)
+                    ncj.append(ncj[-1] + ncj_l)
+                    num -= fac_nl_nh
+                else:
+                    ncj.append(ncj[-1] + ncj_h)
 
     return nri, ncj
 
@@ -880,6 +945,13 @@ def coarse_decomp(y2_fine, x2_fine, y2_coarse, x2_coarse, nri_fine, ncj_fine, np
 
     nri_coarse = [np.argmin(np.absolute(y2_coarse - y2_fine[subdomain_bnd])) for subdomain_bnd in nri_coarse_tmp]
     ncj_coarse = [np.argmin(np.absolute(x2_coarse - x2_fine[subdomain_bnd])) for subdomain_bnd in ncj_coarse_tmp]
+
+    dri = np.array(nri_coarse[1:]) - np.array(nri_coarse[:-1])
+    if np.max(dri) - np.min(dri) >= 2:
+        nri_coarse, nothing = partition_domain(nr_coarse, nc_coarse, npr_coarse, npc_coarse)
+    dcj = np.array(ncj_coarse[1:]) - np.array(ncj_coarse[:-1])
+    if np.max(dcj) - np.min(dcj) >= 2:
+        nothing, ncj_coarse = partition_domain(nr_coarse, nc_coarse, npr_coarse, npc_coarse)
 
     return nri_coarse, ncj_coarse, npr_coarse, npc_coarse, pids_coarse
 

@@ -1,6 +1,7 @@
 Pumadyn is a city-scale large-eddy-simulation based incompressible Navier-Stokes solver to
 be applied for flow and dispersion simulations within the urban canopy written in Python 2.7.
 
+The code has been developed at Leibniz Institute for Troposhperic Research, Leipzig, Germany.
 The author and current maintainer of the code is Michael Weger (weger@tropos.de).
 
 Copyright (C) 2020 Michael Weger

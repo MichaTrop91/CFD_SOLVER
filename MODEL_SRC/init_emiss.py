@@ -43,8 +43,8 @@ def get_emissions(comm, param_dict):
 
 
     # if no tracers are computed, return 3 empty lists
-    if param_dict['with_emissfile'] == 0:
-       return [], [], []
+    if param_dict['with_emissfile'] == False:
+       return [], []
 
     emiss_file = Dataset('INPUT/' + param_dict['simulation_name'] + '_emiss.nc', 'r')
     var_names =  [str(name) for name in emiss_file.variables.keys() if name not in ['x', 'y', 'ufl']]    
